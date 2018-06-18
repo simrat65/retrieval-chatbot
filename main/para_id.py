@@ -25,16 +25,13 @@ from keras.models import Model
 from keras.layers import LSTM, Embedding, Input, Merge
 from keras.optimizers import Adadelta
 import keras.backend as K
-#print('1')
-EMBEDDING_FILE = 'data/GoogleNews-vectors-negative300.bin'
-word2vec_model = gensim.models.KeyedVectors.load_word2vec_format(EMBEDDING_FILE, binary = True, limit=100000)
-#print('3')
-w2v = dict(zip(word2vec_model.wv.index2word, word2vec_model.wv.syn0))
-#print('4')
-#print('2')
 
-## Helper functions
-# Pre-process and convert text to a list of words
+EMBEDDING_FILE = '../DeepQA/chatbot/GoogleNews-vectors-negative300.bin'
+word2vec_model = gensim.models.KeyedVectors.load_word2vec_format(EMBEDDING_FILE, binary = True, limit=100000)
+
+w2v = dict(zip(word2vec_model.wv.index2word, word2vec_model.wv.syn0))
+
+
 def text_clean(corpus, keep_list):
     '''
     Purpose : Function to keep only alphabets, digits and certain words (punctuations, qmarks, tabs etc. removed)
@@ -140,14 +137,9 @@ def predict(q1,q2):
 	qs = q1.append(q2)
 	
 	qs = preprocess(qs, keep_list = common_dot_words, remove_stopwords = False)
-	
-	#print(qs)
 	# Separating processed questions
 	q1 = qs[0:q1_len]
 	q2 = qs[q1_len:]
-	
-	#print(q1.shape)
-	#print(q2.shape)
 	# Loading pre-trained word vectors
 
 	
@@ -181,8 +173,6 @@ def predict(q1,q2):
 
 			# Replace questions with equivalent numerical vector/ word-indices
 			qs.set_value(index, question, q2n)
-		
-	#print('3')
 
 	# Prepare embedding layer
 	embedding_dim = 300
@@ -193,11 +183,7 @@ def predict(q1,q2):
 	for word, index in vocabulary.items():
 		if word in word2vec_model.vocab:
 			embeddings[index] = w2v[word]
-
-	
-	#print('4')
 	##print("\n Embedding matrix prepared")
-
 	# Feature-space of the two questions
 	X_test = {'left': qs['q1'], 'right': qs['q2']}
 
@@ -205,7 +191,6 @@ def predict(q1,q2):
 	max_seq_length = 50
 	X_test['left'] = sequence.pad_sequences(X_test['left'], maxlen = max_seq_length)
 	X_test['right'] = sequence.pad_sequences(X_test['right'], maxlen = max_seq_length)
-	#print('5')
 	# Checking shapes and sizes to ensure no errors occur
 	assert X_test['left'].shape == X_test['right'].shape
 
@@ -222,11 +207,9 @@ def predict(q1,q2):
 
 	embedding_layer = Embedding(len(embeddings), embedding_dim, weights=[embeddings], input_length=max_seq_length, 
 								trainable=False, name = 'embed_new')
-	#print('6')
 	# Embedded version of the inputs
 	encoded_left = embedding_layer(left_input)
 	encoded_right = embedding_layer(right_input)
-	#print('7')
 	# Since this is a siamese network, both sides share the same LSTM
 	shared_lstm = LSTM(n_hidden, activation = 'relu', name = 'lstm_1_2')
 
@@ -236,38 +219,13 @@ def predict(q1,q2):
 	# Calculates the distance as defined by the MaLSTM model
 	malstm_distance = Merge(mode=lambda x: exponent_neg_manhattan_distance(x[0], x[1]), 
 							output_shape=lambda x: (x[0][0], 1))([left_output, right_output])
-	#print('8')
 	# Combine all of the above in a Model
 	model = Model([left_input, right_input], [malstm_distance])
-	model.load_weights("chatbot/model30_relu_epoch_3.h5", by_name = True)
+	model.load_weights("weights/model30_relu_epoch_3.h5", by_name = True)
 	model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
 	##print("\n Weights loaded and compiled")
-	#print('10')
 	##print("\n Making prediction")
 	## Predict using pre-trained model
 	pred = model.predict([X_test['left'], X_test['right']])
-	#print('11')
-	#print("\n")
 
 	return pred
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
