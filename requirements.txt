@@ -1,0 +1,12 @@
+keras
+theano/tensorflow (for keras backend)
+numpy
+pandas
+seaborn
+matplotlib
+re
+nltk
+gensim
+pickle
+tqdm
+itertools
